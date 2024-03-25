@@ -128,7 +128,7 @@ class TodoCRUD:
                 if value is not None:
                     setattr(todo_to_update, key, value)
 
-            setattr(todo_to_update, "updated_at", datetime.now(timezone.utc))
+            setattr(todo_to_update, "updated_at", datetime.utcnow())
             await session.commit()
             await session.refresh(todo_to_update)
             return TodoOut(**todo_to_update.model_dump())
