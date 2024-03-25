@@ -46,7 +46,7 @@ class TestTodos:
 
     async def test_delete_todo(self, test_client: AsyncClient, user_token_headers):
         response = await test_client.post(
-            "/todo",
+            "/todo/",
             json={"title": "Test Title", "description": "Test Description"},
             headers=user_token_headers,
         )
