@@ -1,15 +1,11 @@
 import pytest
 from httpx import AsyncClient
-from app.core.config import test_settings
-
 
 class TestTodos:
 
-    async def test_get_todos(self, test_client: AsyncClient , user_token_headers):
-        print(user_token_headers)
-        # response = await test_client.get("/todo", headers=user_token_headers)
-        # assert response.status_code == 200
-        assert 1 == 1
+    async def test_get_todos(self, test_client: AsyncClient, user_token_headers):
+        response = await test_client.get("/todo", headers=user_token_headers)
+        assert response.status_code == 200
 
     # async def test_create_todo(self, test_client: AsyncClient, user_token_headers):
     #     response = await test_client.post(

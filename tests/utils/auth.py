@@ -31,7 +31,7 @@ async def user_authentication_headers(
 
 
 async def get_user_token_headers(
-    *, client: AsyncClient, email: str, username: str, password, session: AsyncSession
+    client: AsyncClient, email: str, username: str, password, session: AsyncSession
 ) -> dict[str, str]:
     """
     Return a valid token for the user with given credentials.
@@ -43,9 +43,10 @@ async def get_user_token_headers(
         user_in_create = UserCreate(email=email, password=password, username=username)
         user = await create_user(session=session, user_create=user_in_create)
 
-    return await user_authentication_headers(
+    authenticated_headers = await user_authentication_headers(
         client=client, email=email, password=password
     )
+    return authenticated_headers
 
 
 async def get_admin_token_headers(test_client: AsyncClient) -> dict[str, str]:

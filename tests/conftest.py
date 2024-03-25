@@ -16,7 +16,7 @@ from tests.utils.auth import get_user_token_headers, get_admin_token_headers
 base_url = "http://localhost:8000/api/v1"
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
@@ -41,7 +41,7 @@ test_async_engine = create_async_engine(
 )
 
 
-@pytest.fixture(name="test_session", scope="session", autouse=True)
+@pytest.fixture(name="test_session", scope="module", autouse=True)
 async def test_async_session() -> AsyncGenerator[AsyncSession, None]:
     async_session = async_sessionmaker(
         bind=test_async_engine, class_=AsyncSession, expire_on_commit=False
@@ -61,13 +61,14 @@ async def test_async_client() -> AsyncGenerator[AsyncClient, None]:
 async def user_token_headers(
     test_client: AsyncClient, test_session: AsyncSession
 ) -> dict[str, str]:
-    return await get_user_token_headers(
+    user_token_headers = await get_user_token_headers(
         client=test_client,
         session=test_session,
         email=test_settings.TEST_USER_EMAIL,
         username=test_settings.TEST_USER_USERNAME,
         password=test_settings.TEST_USER_PASSWORD,
     )
+    return user_token_headers
 
 
 @pytest.fixture(scope="module")
