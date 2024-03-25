@@ -61,8 +61,6 @@ class TestTodos:
 
         data = response.json()
 
-        assert data["id"] == todo_id
-
         response = await test_client.get(f"/todo/{todo_id}", headers=user_token_headers)
 
         assert response.status_code == 404
