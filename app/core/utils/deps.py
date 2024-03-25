@@ -12,7 +12,7 @@ from sqlmodel import Session
 
 from app.core import security
 from app.core.config import settings
-from app.core.db import engine, async_engine
+from app.core.db import async_engine
 from app.core.utils.generic_models import RoleEnum
 from app.auth.models import User
 from app.auth.schemas import TokenPayload

@@ -10,17 +10,11 @@ from app.auth.schemas import UserCreate
 from app.auth.crud import create_user
 from app.todo.models import Todo
 
-connection_string = str(settings.POSTGRES_DATABASE_URL).replace(
-    "postgresql", "postgresql+psycopg2"
-)
-
 async_connection_string = (
     str(settings.POSTGRES_DATABASE_URL)
     .replace("postgresql", "postgresql+asyncpg")
     .replace("sslmode=require", "")
 )
-
-engine = create_engine(connection_string, echo=True, pool_recycle=300)
 
 async_engine = create_async_engine(
     url=async_connection_string,
@@ -33,16 +27,18 @@ async_engine = create_async_engine(
 )
 
 
-async def init_db() -> None:
+async def init_db(Engine=async_engine) -> None:
     # Tables should be created with Alembic migrations
     # But if you don't want to use migrations, create
     # the tables un-commenting the next lines
 
     # This works because the models are already imported and registered from app
-    SQLModel.metadata.create_all(engine)
+    async with Engine.begin() as async_conn:
+        await async_conn.run_sync(SQLModel.metadata.create_all)
+
 
     async_session = async_sessionmaker(
-        bind=async_engine, class_=AsyncSession, expire_on_commit=False
+        bind=Engine, class_=AsyncSession, expire_on_commit=False
     )
 
     async with async_session() as session:

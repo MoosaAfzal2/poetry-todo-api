@@ -12,6 +12,7 @@ from app.core.config import test_settings
 from app.main import app
 
 from tests.utils.auth import get_user_token_headers, get_admin_token_headers
+from app.core.db import init_db
 
 base_url = "http://localhost:8000/api/v1"
 
@@ -25,7 +26,7 @@ def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
 
 
 test_async_connection_string = (
-    str(test_settings.POSTGRES_DATABASE_URL)
+    str(test_settings.TEST_POSTGRES_DATABASE_URL)
     .replace("postgresql", "postgresql+asyncpg")
     .replace("sslmode=require", "")
 )
@@ -43,6 +44,9 @@ test_async_engine = create_async_engine(
 
 @pytest.fixture(name="test_session", scope="module", autouse=True)
 async def test_async_session() -> AsyncGenerator[AsyncSession, None]:
+    # Intialize DB
+    await init_db(test_async_engine)
+
     async_session = async_sessionmaker(
         bind=test_async_engine, class_=AsyncSession, expire_on_commit=False
     )

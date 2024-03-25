@@ -90,6 +90,7 @@ settings = Settings()  # type: ignore
 
 class TestSettings(Settings):
     model_config = SettingsConfigDict(case_sensitive=True)
+    TEST_POSTGRES_DATABASE_URL :str
     ENVIRONMENT: Union[EnvironmentEnum, str] = EnvironmentEnum.testing
     TEST_USER_EMAIL : str
     TEST_USER_USERNAME : str

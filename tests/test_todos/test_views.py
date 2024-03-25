@@ -4,7 +4,7 @@ from httpx import AsyncClient
 class TestTodos:
 
     async def test_get_todos(self, test_client: AsyncClient, user_token_headers):
-        response = await test_client.get("/todo", headers=user_token_headers)
+        response = await test_client.get("/todo/", headers=user_token_headers)
         assert response.status_code == 200
 
     # async def test_create_todo(self, test_client: AsyncClient, user_token_headers):
