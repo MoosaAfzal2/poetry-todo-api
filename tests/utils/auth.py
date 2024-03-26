@@ -5,16 +5,17 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from app.core.config import settings
 from app.auth.models import User
 from app.auth.schemas import UserCreate, UserUpdate
-from app.auth.crud import create_user, get_user, update_user
+from app.auth.crud import AuthCrud
 
 from tests.utils.helpers import create_random_email, create_random_lower_string
 
 
 async def create_random_user(session: AsyncSession) -> User:
+    authCrud = AuthCrud(session=session)
     email = create_random_email()
     password = create_random_lower_string()
     user_in = UserCreate(email=email, password=password)
-    user = await create_user(session=session, user_create=user_in)
+    user = await authCrud.create_user(user_create=user_in)
     return user
 
 
@@ -38,10 +39,11 @@ async def get_user_token_headers(
 
     If the user doesn't exist it is created first.
     """
-    user = await get_user(session=session, email=email, username=username)
+    authCrud = AuthCrud(session=session)
+    user = await authCrud.get_user(email=email, username=username)
     if not user:
         user_in_create = UserCreate(email=email, password=password, username=username)
-        user = await create_user(session=session, user_create=user_in_create)
+        user = await authCrud.create_user(user_create=user_in_create)
 
     authenticated_headers = await user_authentication_headers(
         client=client, email=email, password=password

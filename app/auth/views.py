@@ -5,27 +5,29 @@ from sqlmodel import col, delete, func, select
 from sqlalchemy.exc import IntegrityError
 
 from typing import Any, Annotated
+from uuid import UUID
 from datetime import datetime, timedelta, timezone
 
-from app.core.utils.deps import CurrentUserDep, SessionDep
+from app.core.utils.deps import CurrentUserDep
 from app.core.config import settings
+from app.core.utils.generic_models import Message
 from app.core.security import get_password_hash, verify_password, create_access_token
 
 from .models import User
 from .schemas import Token, UserBase, UserCreate, UserUpdate
-import app.auth.crud as AuthCrud
+from .crud import AuthCrudDep
 
 AuthRouter = APIRouter()
 
 
 @AuthRouter.post("/sign-up", response_model=Token)
-async def signUp_route(session: SessionDep, user_create: UserCreate):
+async def signUp_route(AuthCrud: AuthCrudDep, user_create: UserCreate):
     """
     Signs-up, creates a new user & return an access token.
     """
     try:
         user = await AuthCrud.get_user(
-            session=session, email=user_create.email, username=user_create.username
+            email=user_create.email, username=user_create.username
         )
         if user:
             raise HTTPException(
@@ -33,9 +35,7 @@ async def signUp_route(session: SessionDep, user_create: UserCreate):
                 detail="A User with this email or username Already Exists",
             )
 
-        created_user = await AuthCrud.create_user(
-            session=session, user_create=user_create
-        )
+        created_user = await AuthCrud.create_user(user_create=user_create)
         if not created_user:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -71,14 +71,14 @@ async def signUp_route(session: SessionDep, user_create: UserCreate):
 
 @AuthRouter.post("/login", response_model=Token)
 async def login_route(
-    session: SessionDep, form_data: Annotated[OAuth2PasswordRequestForm, Depends()]
+    AuthCrud: AuthCrudDep, form_data: Annotated[OAuth2PasswordRequestForm, Depends()]
 ) -> Token:
     """
     OAuth2 compatible token login, get an access token for future requests
     """
     try:
         user = await AuthCrud.authenticate(
-            session=session, email=form_data.username, password=form_data.password
+            email=form_data.username, password=form_data.password
         )
 
         if not user:
@@ -107,6 +107,28 @@ async def login_route(
             expires_in=access_token_expires.total_seconds(),
             token_type="bearer",
         )
+
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An Unexpected error occurred",
+        )
+
+
+@AuthRouter.delete("/delete-account", response_model=Message)
+def delete_user_account(AuthCrud: AuthCrudDep, current_user: CurrentUserDep):
+    try:
+        if not isinstance(current_user.id, UUID):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not validate credentials",
+            )
+        deleted_user = AuthCrud.delete_user(user_id=current_user.id)
+
+        if deleted_user and deleted_user is not None:
+            return Message(message="User Account deleted successfully")
 
     except HTTPException as e:
         raise e
