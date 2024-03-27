@@ -24,6 +24,15 @@ class AuthCrud:
         self.session = session
 
     async def create_user(self, user_create: UserCreate) -> User:
+        """
+        Creates a new user in the database.
+
+        Args:
+            user_create (UserCreate): The user data to be created.
+
+        Returns:
+            User
+        """
         try:
             db_obj = User.model_validate(
                 user_create,
@@ -43,6 +52,16 @@ class AuthCrud:
             )
 
     async def update_user(self, db_user: User, user_in: UserUpdate) -> User:
+        """
+        Asynchronously updates a user in the database.
+
+        Args:
+            db_user (User): The user to be updated.
+            user_in (UserUpdate): The updated user data.
+
+        Returns:
+            User: The updated user.
+        """
         try:
             user_data = user_in.model_dump(exclude_unset=True)
             extra_data = {}
@@ -97,6 +116,19 @@ class AuthCrud:
             )
 
     async def get_user(self, email: str, username: Optional[str] = None) -> User | None:
+        """
+        Retrieves a user from the database based on the provided email and optional username.
+
+        Parameters:
+            email (str): The email of the user to retrieve.
+            username (Optional[str], optional): The username of the user to retrieve. Defaults to None.
+
+        Returns:
+            Union[User, None]: The retrieved user if found, otherwise None.
+
+        Raises:
+            HTTPException: If the email is invalid or if there is an error getting the user from the database.
+        """
         try:
             # Validate Email
             validate_email(email, check_deliverability=False)
@@ -122,6 +154,20 @@ class AuthCrud:
             )
 
     async def authenticate(self, email: str, password: str) -> User | None:
+        """
+        Authenticates a user with the given email and password.
+
+        Args:
+            email (str): The email of the user.
+            password (str): The password of the user.
+
+        Returns:
+            User | None: The authenticated user if successful, None otherwise.
+
+        Raises:
+            HTTPException: If the user does not exist or the password is incorrect.
+            HTTPException: If there is an error authenticating the user.
+        """
         try:
             db_user = await self.get_user(email=email)
             if not db_user:

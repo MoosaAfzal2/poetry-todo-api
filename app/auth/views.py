@@ -118,7 +118,7 @@ async def login_route(
 
 
 @AuthRouter.delete("/delete-account", response_model=Message)
-def delete_user_account(AuthCrud: AuthCrudDep, current_user: CurrentUserDep):
+def delete_account_route(AuthCrud: AuthCrudDep, current_user: CurrentUserDep):
     try:
         if not isinstance(current_user.id, UUID):
             raise HTTPException(
