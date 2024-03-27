@@ -7,7 +7,6 @@ from app.core.utils.generic_models import RoleEnum
 
 from app.auth.models import User
 from app.auth.schemas import UserCreate
-from app.auth.crud import create_user
 from app.todo.models import Todo
 
 async_connection_string = (
@@ -36,13 +35,15 @@ async def init_db(Engine=async_engine) -> None:
     async with Engine.begin() as async_conn:
         await async_conn.run_sync(SQLModel.metadata.create_all)
 
-
     async_session = async_sessionmaker(
         bind=Engine, class_=AsyncSession, expire_on_commit=False
     )
 
+    from app.auth.crud import AuthCrud
+    
     async with async_session() as session:
 
+        authCrud = AuthCrud(session=session)
         user = (
             await session.exec(
                 select(User).where(User.email == settings.FIRST_SUPERUSER_EMAIL)
@@ -55,4 +56,4 @@ async def init_db(Engine=async_engine) -> None:
                 password=settings.FIRST_SUPERUSER_PASSWORD,
                 role=RoleEnum.ADMIN,
             )
-            user = await create_user(session=session, user_create=user_in)
+            user = await authCrud.create_user(user_create=user_in)
