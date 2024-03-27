@@ -14,7 +14,7 @@ from app.core.utils.generic_models import Message
 from app.core.security import get_password_hash, verify_password, create_access_token
 
 from .models import User
-from .schemas import Token, UserBase, UserCreate, UserUpdate
+from .schemas import Token, UserCreate, UserOut, UserUpdate
 from .crud import AuthCrudDep
 
 AuthRouter = APIRouter()
@@ -118,14 +118,14 @@ async def login_route(
 
 
 @AuthRouter.delete("/delete-account", response_model=Message)
-def delete_account_route(AuthCrud: AuthCrudDep, current_user: CurrentUserDep):
+async def delete_account_route(AuthCrud: AuthCrudDep, current_user: CurrentUserDep):
     try:
         if not isinstance(current_user.id, UUID):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Could not validate credentials",
             )
-        deleted_user = AuthCrud.delete_user(user_id=current_user.id)
+        deleted_user = await AuthCrud.delete_user(user_id=current_user.id)
 
         if deleted_user and deleted_user is not None:
             return Message(message="User Account deleted successfully")
@@ -139,175 +139,45 @@ def delete_account_route(AuthCrud: AuthCrudDep, current_user: CurrentUserDep):
         )
 
 
-# @AuthRouter.post(
-#     "/", response_model=UserOut
-# )
-# def create_user(*, session: SessionDep, user_in: UserCreate) -> Any:
-#     """
-#     Create new user.
-#     """
-#     user = crud.get_user_by_email(session=session, email=user_in.email)
-#     if user:
-#         raise HTTPException(
-#             status_code=400,
-#             detail="The user with this email already exists in the system.",
-#         )
+@AuthRouter.get("/profile", response_model=UserOut)
+async def get_profile_route(current_user: CurrentUserDep):
+    try:
+        if not isinstance(current_user.id, UUID):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not validate credentials",
+            )
+        return UserOut(**current_user.model_dump())
 
-#     user = crud.create_user(session=session, user_create=user_in)
-#     # if settings.emails_enabled and user_in.email:
-#     #     email_data = generate_new_account_email(
-#     #         email_to=user_in.email, username=user_in.email, password=user_in.password
-#     #     )
-#     #     send_email(
-#     #         email_to=user_in.email,
-#     #         subject=email_data.subject,
-#     #         html_content=email_data.html_content,
-#     #     )
-#     return user
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An Unexpected error occurred",
+        )
 
 
-# @AuthRouter.patch("/me", response_model=UserOut)
-# def update_user_me(
-#     *, session: SessionDep, user_in: UserUpdateMe, current_user: CurrentUserDep
-# ) -> Any:
-#     """
-#     Update own user.
-#     """
+@AuthRouter.patch("/profile", response_model=UserOut)
+async def update_profile_route(
+    AuthCrud: AuthCrudDep, current_user: CurrentUserDep, user_update: UserUpdate
+):
+    try:
+        if not isinstance(current_user.id, UUID):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not validate credentials",
+            )
 
-#     if user_in.email:
-#         existing_user = crud.get_user_by_email(session=session, email=user_in.email)
-#         if existing_user and existing_user.id != current_user.id:
-#             raise HTTPException(
-#                 status_code=409, detail="User with this email already exists"
-#             )
-#     user_data = user_in.model_dump(exclude_unset=True)
-#     current_user.sqlmodel_update(user_data)
-#     session.add(current_user)
-#     session.commit()
-#     session.refresh(current_user)
-#     return current_user
+        updated_user = await AuthCrud.update_user(
+            user_id=current_user.id, updated_data=user_update
+        )
+        return UserOut(**updated_user.model_dump())
 
-
-# @AuthRouter.patch("/me/password", response_model=Message)
-# def update_password_me(
-#     *, session: SessionDep, body: UpdatePassword, current_user: CurrentUserDep
-# ) -> Any:
-#     """
-#     Update own password.
-#     """
-#     if not verify_password(body.current_password, current_user.hashed_password):
-#         raise HTTPException(status_code=400, detail="Incorrect password")
-#     if body.current_password == body.new_password:
-#         raise HTTPException(
-#             status_code=400, detail="New password cannot be the same as the current one"
-#         )
-#     hashed_password = get_password_hash(body.new_password)
-#     current_user.hashed_password = hashed_password
-#     session.add(current_user)
-#     session.commit()
-#     return Message(message="Password updated successfully")
-
-
-# @AuthRouter.get("/me", response_model=UserOut)
-# def read_user_me(session: SessionDep, current_user: CurrentUserDep) -> Any:
-#     """
-#     Get current user.
-#     """
-#     return current_user
-
-
-# @AuthRouter.post("/open", response_model=UserOut)
-# def create_user_open(session: SessionDep, user_in: UserCreateOpen) -> Any:
-#     """
-#     Create new user without the need to be logged in.
-#     """
-#     if not settings.USERS_OPEN_REGISTRATION:
-#         raise HTTPException(
-#             status_code=403,
-#             detail="Open user registration is forbidden on this server",
-#         )
-#     user = crud.get_user_by_email(session=session, email=user_in.email)
-#     if user:
-#         raise HTTPException(
-#             status_code=400,
-#             detail="The user with this email already exists in the system",
-#         )
-#     user_create = UserCreate.from_orm(user_in)
-#     user = crud.create_user(session=session, user_create=user_create)
-#     return user
-
-
-# @AuthRouter.get("/{user_id}", response_model=UserOut)
-# def read_user_by_id(
-#     user_id: int, session: SessionDep, current_user: CurrentUserDep
-# ) -> Any:
-#     """
-#     Get a specific user by id.
-#     """
-#     user = session.get(User, user_id)
-#     if user == current_user:
-#         return user
-#     if not current_user.is_superuser:
-#         raise HTTPException(
-#             status_code=403,
-#             detail="The user doesn't have enough privileges",
-#         )
-#     return user
-
-
-# @AuthRouter.patch(
-#     "/{user_id}",
-#     dependencies=[Depends(get_current_active_superuser)],
-#     response_model=UserOut,
-# )
-# def update_user(
-#     *,
-#     session: SessionDep,
-#     user_id: int,
-#     user_in: UserUpdate,
-# ) -> Any:
-#     """
-#     Update a user.
-#     """
-
-#     db_user = session.get(User, user_id)
-#     if not db_user:
-#         raise HTTPException(
-#             status_code=404,
-#             detail="The user with this id does not exist in the system",
-#         )
-#     if user_in.email:
-#         existing_user = crud.get_user_by_email(session=session, email=user_in.email)
-#         if existing_user and existing_user.id != user_id:
-#             raise HTTPException(
-#                 status_code=409, detail="User with this email already exists"
-#             )
-
-#     db_user = crud.update_user(session=session, db_user=db_user, user_in=user_in)
-#     return db_user
-
-
-# @AuthRouter.delete("/{user_id}")
-# def delete_user(
-#     session: SessionDep, current_user: CurrentUserDep, user_id: int
-# ) -> Message:
-#     """
-#     Delete a user.
-#     """
-#     user = session.get(User, user_id)
-#     if not user:
-#         raise HTTPException(status_code=404, detail="User not found")
-#     elif user != current_user and not current_user.is_superuser:
-#         raise HTTPException(
-#             status_code=403, detail="The user doesn't have enough privileges"
-#         )
-#     elif user == current_user and current_user.is_superuser:
-#         raise HTTPException(
-#             status_code=403, detail="Super users are not allowed to delete themselves"
-#         )
-
-#     statement = delete(Item).where(col(Item.owner_id) == user_id)
-#     session.exec(statement)  # type: ignore
-#     session.delete(user)
-#     session.commit()
-#     return Message(message="User deleted successfully")
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An Unexpected error occurred",
+        )

@@ -7,8 +7,6 @@ from enum import Enum
 from app.core.utils.generic_models import RoleEnum
 
 
-# Shared properties
-# TODO replace email str with EmailStr when sqlmodel supports it
 class UserBase(SQLModel):
     email: EmailStr = Field(sa_column=Column("email", VARCHAR, unique=True))
     username: str = Field(unique=True, index=True)
@@ -22,12 +20,17 @@ class UserCreate(SQLModel):
     email: EmailStr
     username: str
     password: str
-    role: Optional[RoleEnum] = RoleEnum.USER
 
 
-class UserUpdate(UserBase):
-    email: Optional[str] = None  # type: ignore
+class UserUpdate(SQLModel):
+    email: Optional[EmailStr] = None  # type: ignore
+    username: Optional[str] = None  # type: ignore
     password: Optional[str] = None
+    full_name: Optional[str] = None
+
+
+class UserOut(UserBase):
+    pass
 
 
 class UpdatePassword(SQLModel):

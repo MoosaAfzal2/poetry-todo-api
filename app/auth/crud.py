@@ -12,18 +12,62 @@ from sqlalchemy.exc import IntegrityError
 from app.core.utils.deps import SessionDep
 from app.core.security import get_password_hash, verify_password
 from app.core.utils.logger import logger
+from app.core.utils.generic_models import RoleEnum
 
 from .schemas import UserCreate, UserUpdate
 from .models import User
 from datetime import datetime, timezone
-
 
 class AuthCrud:
 
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
-    async def create_user(self, user_create: UserCreate) -> User:
+    async def get_user(
+        self,
+        email: Optional[str] = None,
+        username: Optional[str] = None,
+        user_id: Optional[UUID] = None,
+    ) -> User | None:
+        """
+        Retrieves a user from the database based on the provided email and optional username.
+
+        Parameters:
+            email (str): The email of the user to retrieve.
+            username (Optional[str], optional): The username of the user to retrieve. Defaults to None.
+
+        Returns:
+            Union[User, None]: The retrieved user if found, otherwise None.
+
+        Raises:
+            HTTPException: If the email is invalid or if there is an error getting the user from the database.
+        """
+        try:
+            if email is not None:
+                # Validate Email
+                validate_email(email, check_deliverability=False)
+
+            statement = select(User).where(
+                or_(User.email == email, User.username == username, User.id == user_id)
+            )
+            session_user = (await self.session.exec(statement)).first()
+            return session_user
+
+        except EmailNotValidError as e:
+            logger.info(str(e))
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid Email",
+            )
+
+        except Exception as e:
+            logger.info(str(e))
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Error Getting User",
+            )
+
+    async def create_user(self, user_create: UserCreate , role: Optional[RoleEnum] = RoleEnum.USER) -> User:
         """
         Creates a new user in the database.
 
@@ -51,19 +95,25 @@ class AuthCrud:
                 detail="Error Creating User",
             )
 
-    async def update_user(self, db_user: User, user_in: UserUpdate) -> User:
+    async def update_user(self, user_id: UUID, updated_data: UserUpdate) -> User:
         """
-        Asynchronously updates a user in the database.
+        Updates a user's information in the database.
 
         Args:
-            db_user (User): The user to be updated.
-            user_in (UserUpdate): The updated user data.
+            user_id (UUID): The unique identifier of the user to be updated.
+            updated_data (UserUpdate): An object containing the updated user data.
 
         Returns:
-            User: The updated user.
+            User
         """
         try:
-            user_data = user_in.model_dump(exclude_unset=True)
+            db_user = await self.get_user(user_id=user_id)
+            if db_user is None:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="User Does Not Exist",
+                )
+            user_data = updated_data.model_dump(exclude_unset=True)
             extra_data = {}
             if "password" in user_data:
                 password = user_data["password"]
@@ -113,44 +163,6 @@ class AuthCrud:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Error Deleting User",
-            )
-
-    async def get_user(self, email: str, username: Optional[str] = None) -> User | None:
-        """
-        Retrieves a user from the database based on the provided email and optional username.
-
-        Parameters:
-            email (str): The email of the user to retrieve.
-            username (Optional[str], optional): The username of the user to retrieve. Defaults to None.
-
-        Returns:
-            Union[User, None]: The retrieved user if found, otherwise None.
-
-        Raises:
-            HTTPException: If the email is invalid or if there is an error getting the user from the database.
-        """
-        try:
-            # Validate Email
-            validate_email(email, check_deliverability=False)
-
-            statement = select(User).where(
-                or_(User.email == email, User.username == username)
-            )
-            session_user = (await self.session.exec(statement)).first()
-            return session_user
-
-        except EmailNotValidError as e:
-            logger.info(str(e))
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid Email",
-            )
-
-        except Exception as e:
-            logger.info(str(e))
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Error Getting User",
             )
 
     async def authenticate(self, email: str, password: str) -> User | None:

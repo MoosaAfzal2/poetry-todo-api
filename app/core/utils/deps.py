@@ -59,3 +59,5 @@ async def get_current_admin(current_user: CurrentUserDep) -> User:
             status_code=400, detail="The user doesn't have enough privileges"
         )
     return current_user
+
+CurrentAdminDep = Annotated[User, Depends(get_current_admin)]

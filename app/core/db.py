@@ -40,7 +40,7 @@ async def init_db(Engine=async_engine) -> None:
     )
 
     from app.auth.crud import AuthCrud
-    
+
     async with async_session() as session:
 
         authCrud = AuthCrud(session=session)
@@ -54,6 +54,5 @@ async def init_db(Engine=async_engine) -> None:
                 username=settings.FIRST_SUPERUSER_USERNAME,
                 email=settings.FIRST_SUPERUSER_EMAIL,
                 password=settings.FIRST_SUPERUSER_PASSWORD,
-                role=RoleEnum.ADMIN,
             )
-            user = await authCrud.create_user(user_create=user_in)
+            user = await authCrud.create_user(user_create=user_in, role=RoleEnum.ADMIN)
