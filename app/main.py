@@ -31,7 +31,13 @@ app = FastAPI(
     docs_url=f"{settings.API_STR}/docs",
     openapi_url=f"{settings.API_STR}/openapi.json",
     generate_unique_id_function=custom_generate_unique_id,
-    servers=[{"url": "http://localhost:8000", "description": "Development Server"}],
+    servers=[
+        {"url": "http://localhost:8000", "description": "Development Server"},
+        {
+            "url": "https://poetry-todo-api.vercel.app",
+            "description": "Production Server",
+        },
+    ],
 )
 
 # Set all CORS enabled origins
